@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kushal Multi Speciality Hospital — Billing</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="css/theme.css" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/buttons.css" />
+  <link rel="stylesheet" href="css/forms.css" />
+  <link rel="stylesheet" href="css/tables.css" />
+  <link rel="stylesheet" href="css/sidebar.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563eb'/%3E%3Cpath d='M26 14h12v12h12v12H38v12H26V38H14V26h12z' fill='%23fff'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/validation.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    (function () {
+      "use strict";
+      const user = Auth.requireAuth();
+      if (!user) return;
+      Auth.renderShell(user, "billing.html");
+      const content = document.getElementById("pageContent");
+      content.insertAdjacentHTML("beforeend",
+        '<div class="page-head fade-in-up"><div class="left"><div class="icon-pill" style="background:linear-gradient(135deg,#d97706,#b45309)"><i class="fa-solid fa-file-invoice-dollar"></i></div>' +
+        '<div><div class="page-title">Billing</div><div class="page-sub" id="bCount">Loading…</div></div></div>' +
+        '<div class="actions"><button class="btn btn-gold" id="newBtn"><i class="fa-solid fa-plus"></i> New Invoice</button></div></div>' +
+        '<div class="stat-grid" id="bStats"></div>' +
+        '<div class="table-wrap fade-in-up"><div class="table-scroll"><table class="data"><thead><tr><th>Invoice</th><th>Patient</th><th>Date</th><th>Consultation</th><th>Lab</th><th>Surgery</th><th>Pharmacy</th><th>Room</th><th>Total</th><th>Paid</th><th>Balance</th><th>Status</th><th>Actions</th></tr></thead><tbody id="tbody"></tbody></table></div></div>'
+      );
+      let patients = [];
+      async function load() {
+        const bills = await API.list("billing");
+        if (!patients.length) patients = await API.list("patients");
+        const totalRev = bills.reduce((s, b) => s + Number(b.paid || 0), 0);
+        const pending = bills.reduce((s, b) => s + Number(b.balance || 0), 0);
+        const paid = bills.filter((b) => b.status === "Paid").length;
+        document.getElementById("bCount").textContent = bills.length + " invoices";
+        document.getElementById("bStats").innerHTML =
+          stat("fa-file-invoice-dollar", "Total Revenue", Utils.fmtMoney(totalRev), "Collected", "stat-gold") +
+          stat("fa-circle-check", "Paid Invoices", paid, "Settled", "stat-emerald") +
+          stat("fa-clock", "Pending Balance", Utils.fmtMoney(pending), "To collect", "stat-orange") +
+          stat("fa-file", "Total Invoices", bills.length, "All time", "stat-blue");
+        const body = document.getElementById("tbody");
+        if (!bills.length) body.innerHTML = '<tr><td colspan="13"><div class="empty-state"><i class="fa-solid fa-file-invoice-dollar"></i>No invoices yet.</div></td></tr>';
+        else body.innerHTML = bills.map((b) =>
+          '<tr><td data-label="Invoice"><b>' + Utils.escapeHtml(b.id) + '</b></td><td data-label="Patient">' + Utils.escapeHtml(b.patient || "—") + '</td>' +
+          '<td data-label="Date">' + Utils.escapeHtml(Utils.fmtDate(b.date)) + '</td><td data-label="Consultation">' + Utils.fmtMoney(b.consultation) + '</td>' +
+          '<td data-label="Lab">' + Utils.fmtMoney(b.lab) + '</td><td data-label="Surgery">' + Utils.fmtMoney(b.surgery) + '</td>' +
+          '<td data-label="Pharmacy">' + Utils.fmtMoney(b.pharmacy) + '</td><td data-label="Room">' + Utils.fmtMoney(b.room) + '</td>' +
+          '<td data-label="Total"><b>' + Utils.fmtMoney(b.total) + '</b></td><td data-label="Paid">' + Utils.fmtMoney(b.paid) + '</td>' +
+          '<td data-label="Balance">' + Utils.fmtMoney(b.balance) + '</td><td data-label="Status">' + Utils.statusBadge(b.status) + '</td>' +
+          '<td data-label="Actions"><div class="row-actions"><button class="view" data-id="' + Utils.escapeHtml(b.id) + '"><i class="fa-solid fa-print"></i></button>' +
+          '<button class="del" data-id="' + Utils.escapeHtml(b.id) + '"><i class="fa-solid fa-trash"></i></button></div></td></tr>'
+        ).join("");
+        body.querySelectorAll("[data-id]").forEach((b) => b.addEventListener("click", async () => {
+          if (b.classList.contains("del")) { if (!confirm("Delete this invoice?")) return; await API.removeOne("billing", b.getAttribute("data-id")); Validation.toast("Invoice deleted", "success"); load(); }
+          else { const bill = (await API.list("billing")).find((x) => x.id === b.getAttribute("data-id")); printBill(bill); }
+        }));
+      }
+      function stat(icon, label, value, foot, cls) { return '<div class="stat-card ' + cls + '"><i class="fa-solid ' + icon + ' stat-icon"></i><div class="stat-label">' + label + '</div><div class="stat-value">' + value + '</div><div class="stat-foot">' + foot + '</div></div>'; }
+      function printBill(b) {
+        const w = window.open("", "_blank");
+        w.document.write('<html><head><title>Invoice ' + b.id + '</title><style>body{font-family:Segoe UI,Arial;padding:30px;color:#0f172a}h1{color:#2563eb}.row{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #e2e8f0}.tot{font-weight:700;font-size:1.2rem;color:#059669}</style></head><body>' +
+          '<h1>Kushal Multi Speciality Hospital</h1><p>Invoice: ' + b.id + ' • Date: ' + Utils.fmtDate(b.date) + '</p><p>Patient: ' + (b.patient || "—") + '</p>' +
+          '<div class="row"><span>Consultation</span><span>' + Utils.fmtMoney(b.consultation) + '</span></div>' +
+          '<div class="row"><span>Laboratory</span><span>' + Utils.fmtMoney(b.lab) + '</span></div>' +
+          '<div class="row"><span>Surgery</span><span>' + Utils.fmtMoney(b.surgery) + '</span></div>' +
+          '<div class="row"><span>Pharmacy</span><span>' + Utils.fmtMoney(b.pharmacy) + '</span></div>' +
+          '<div class="row"><span>Room Charges</span><span>' + Utils.fmtMoney(b.room) + '</span></div>' +
+          '<div class="row"><span>Insurance</span><span>-' + Utils.fmtMoney(b.insurance) + '</span></div>' +
+          '<div class="row"><span>Discount</span><span>-' + Utils.fmtMoney(b.discount) + '</span></div>' +
+          '<div class="row tot"><span>Total</span><span>' + Utils.fmtMoney(b.total) + '</span></div>' +
+          '<div class="row"><span>Paid</span><span>' + Utils.fmtMoney(b.paid) + '</span></div>' +
+          '<div class="row"><span>Balance</span><span>' + Utils.fmtMoney(b.balance) + '</span></div>' +
+          '<p style="margin-top:30px;color:#64748b">Thank you for choosing Kushal Multi Speciality Hospital.</p></body></html>');
+        w.document.close(); setTimeout(() => { w.print(); w.close(); }, 350);
+      }
+      document.getElementById("newBtn").addEventListener("click", () => openModal());
+      async function openModal(id) {
+        if (!patients.length) patients = await API.list("patients");
+        const b = id ? await API.getOne("billing", id) : {};
+        const back = document.createElement("div"); back.className = "modal-backdrop";
+        back.innerHTML = '<div class="modal" style="max-width:640px"><div class="modal-head"><h3>' + (id ? "Edit Invoice" : "New Invoice") + '</h3><button class="icon-btn" id="mClose"><i class="fa-solid fa-xmark"></i></button></div>' +
+          '<div class="modal-body"><form><div class="form-grid">' +
+          '<div class="field" style="grid-column:1/-1"><label>Patient <span class="req">*</span></label><select class="select" id="mPatient">' + patients.map((p) => '<option value="' + Utils.escapeHtml(p.firstName + " " + p.lastName) + '" data-id="' + Utils.escapeHtml(p.id) + '">' + Utils.escapeHtml(p.firstName + " " + p.lastName + " (" + p.id + ")") + '</option>').join("") + '</select></div>' +
+          '<div class="field"><label>Consultation (₹)</label><input class="input" type="number" id="mCons" value="0"></div>' +
+          '<div class="field"><label>Lab (₹)</label><input class="input" type="number" id="mLab" value="0"></div>' +
+          '<div class="field"><label>Surgery (₹)</label><input class="input" type="number" id="mSurg" value="0"></div>' +
+          '<div class="field"><label>Pharmacy (₹)</label><input class="input" type="number" id="mPharm" value="0"></div>' +
+          '<div class="field"><label>Room Charges (₹)</label><input class="input" type="number" id="mRoom" value="0"></div>' +
+          '<div class="field"><label>Insurance (₹)</label><input class="input" type="number" id="mIns" value="0"></div>' +
+          '<div class="field"><label>Discount (₹)</label><input class="input" type="number" id="mDisc" value="0"></div>' +
+          '<div class="field"><label>GST (%)</label><input class="input" type="number" id="mGst" value="0"></div>' +
+          '<div class="field"><label>Paid (₹)</label><input class="input" type="number" id="mPaid" value="0"></div>' +
+          '<div class="field"><label>Status</label><select class="select" id="mStatus"><option>Unpaid</option><option>Partial</option><option>Paid</option></select></div>' +
+          '</div></form></div><div class="modal-foot"><button class="btn btn-ghost" id="mCancel">Cancel</button><button class="btn btn-gold" id="mSave"><i class="fa-solid fa-floppy-disk"></i> Save</button></div></div>';
+        document.body.appendChild(back);
+        if (b) { ["mCons","mLab","mSurg","mPharm","mRoom","mIns","mDisc","mGst","mPaid"].forEach((k) => { const el = document.getElementById(k); el.value = b[ {mCons:"consultation",mLab:"lab",mSurg:"surgery",mPharm:"pharmacy",mRoom:"room",mIns:"insurance",mDisc:"discount",mGst:"gst",mPaid:"paid"}[k] ] || 0; }); document.getElementById("mPatient").value = b.patient; document.getElementById("mStatus").value = b.status || "Unpaid"; }
+        const close = () => back.remove();
+        document.getElementById("mClose").onclick = close; document.getElementById("mCancel").onclick = close;
+        back.addEventListener("click", (e) => { if (e.target === back) close(); });
+        document.getElementById("mSave").onclick = async () => {
+          const sel = document.getElementById("mPatient");
+          const consultation = +document.getElementById("mCons").value || 0, lab = +document.getElementById("mLab").value || 0, surgery = +document.getElementById("mSurg").value || 0, pharmacy = +document.getElementById("mPharm").value || 0, room = +document.getElementById("mRoom").value || 0, insurance = +document.getElementById("mIns").value || 0, discount = +document.getElementById("mDisc").value || 0, gstPct = +document.getElementById("mGst").value || 0, paid = +document.getElementById("mPaid").value || 0;
+          const subtotal = consultation + lab + surgery + pharmacy + room - insurance - discount;
+          const gst = Math.round(subtotal * (gstPct / 100));
+          const total = subtotal + gst;
+          const balance = total - paid;
+          const status = balance <= 0 ? "Paid" : (paid > 0 ? "Partial" : "Unpaid");
+          const data = { patient: sel.value, patientId: sel.options[sel.selectedIndex].getAttribute("data-id"), date: Utils.todayISO(), consultation, lab, surgery, pharmacy, room, insurance, discount, gst, total, paid, balance, status };
+          if (id) await API.updateOne("billing", id, data);
+          else await API.create("billing", Object.assign(data, { id: Utils.nextBillId(), createdAt: new Date().toISOString() }));
+          Validation.toast("Invoice saved", "success"); close(); load();
+        };
+      }
+      load();
+    })();
+  </script>
+</body>
+</html>

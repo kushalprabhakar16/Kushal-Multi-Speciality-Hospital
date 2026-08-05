@@ -1,0 +1,59 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kushal Multi Speciality Hospital — Notifications</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="css/theme.css" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/buttons.css" />
+  <link rel="stylesheet" href="css/forms.css" />
+  <link rel="stylesheet" href="css/sidebar.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563eb'/%3E%3Cpath d='M26 14h12v12h12v12H38v12H26V38H14V26h12z' fill='%23fff'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/validation.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    (function () {
+      "use strict";
+      const user = Auth.requireAuth();
+      if (!user) return;
+      Auth.renderShell(user, "notifications.html");
+      const content = document.getElementById("pageContent");
+      content.insertAdjacentHTML("beforeend",
+        '<div class="page-head fade-in-up"><div class="left"><div class="icon-pill" style="background:linear-gradient(135deg,#dc2626,#b91c1c)"><i class="fa-solid fa-bell"></i></div><div><div class="page-title">Notifications</div><div class="page-sub" id="nCount">Loading…</div></div></div>' +
+        '<div class="actions"><button class="btn btn-ghost" id="markAll"><i class="fa-solid fa-check-double"></i> Mark all read</button></div></div>' +
+        '<div class="card fade-in-up" id="nList"></div>'
+      );
+      async function load() {
+        const notes = await API.list("notifications");
+        document.getElementById("nCount").textContent = notes.length + " notifications • " + notes.filter((n) => !n.read).length + " unread";
+        const list = document.getElementById("nList");
+        if (!notes.length) { list.innerHTML = '<div class="empty-state"><i class="fa-solid fa-bell-slash"></i>No notifications.</div>'; return; }
+        const icons = { patient: "fa-user-injured", doctor: "fa-user-doctor", appointment: "fa-calendar-check", emergency: "fa-triangle-exclamation", pharmacy: "fa-prescription-bottle-medical", lab: "fa-flask-vial", payment: "fa-file-invoice-dollar", info: "fa-circle-info" };
+        list.innerHTML = notes.map((n) =>
+          '<div class="list-row" data-id="' + Utils.escapeHtml(n.id) + '" style="' + (n.read ? "" : "background:var(--primary-50);border-radius:10px") + '">' +
+          '<div class="icon-pill" style="width:38px;height:38px;flex:none;background:' + (n.read ? "var(--surface-3)" : "linear-gradient(135deg,var(--primary),var(--brand-2))") + '"><i class="fa-solid ' + (icons[n.type] || icons.info) + '"></i></div>' +
+          '<div class="lr-meta"><b>' + Utils.escapeHtml(n.title) + '</b><small>' + Utils.escapeHtml(n.message || "") + ' • ' + Utils.escapeHtml(Utils.fmtDateTime(n.time)) + '</small></div>' +
+          (n.read ? "" : '<button class="icon-btn" data-mark="' + Utils.escapeHtml(n.id) + '"><i class="fa-solid fa-check"></i></button>') + '</div>'
+        ).join("");
+        list.querySelectorAll("[data-mark]").forEach((b) => b.addEventListener("click", async () => { await API.updateOne("notifications", b.getAttribute("data-mark"), { read: true }); load(); Auth.refreshNotifDot(); }));
+      }
+      document.getElementById("markAll").addEventListener("click", async () => { const notes = await API.list("notifications"); for (const n of notes) if (!n.read) await API.updateOne("notifications", n.id, { read: true }); Validation.toast("All marked read", "success"); load(); Auth.refreshNotifDot(); });
+      load();
+    })();
+  </script>
+</body>
+</html>

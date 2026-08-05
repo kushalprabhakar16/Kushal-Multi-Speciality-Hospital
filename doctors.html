@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kushal Multi Speciality Hospital — Doctors</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="css/theme.css" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/buttons.css" />
+  <link rel="stylesheet" href="css/forms.css" />
+  <link rel="stylesheet" href="css/tables.css" />
+  <link rel="stylesheet" href="css/sidebar.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563eb'/%3E%3Cpath d='M26 14h12v12h12v12H38v12H26V38H14V26h12z' fill='%23fff'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/validation.js"></script>
+  <script src="js/upload.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    (function () {
+      "use strict";
+      const user = Auth.requireAuth();
+      if (!user) return;
+      Auth.renderShell(user, "doctors.html");
+      const content = document.getElementById("pageContent");
+      content.insertAdjacentHTML("beforeend",
+        '<div class="page-head fade-in-up"><div class="left"><div class="icon-pill"><i class="fa-solid fa-user-doctor"></i></div>' +
+        '<div><div class="page-title">Doctors</div><div class="page-sub" id="docCount">Loading doctors…</div></div></div>' +
+        '<div class="actions"><button class="btn btn-ghost" id="exportCsv"><i class="fa-solid fa-file-csv"></i> Export CSV</button>' +
+        '<button class="btn btn-ghost" id="printBtn"><i class="fa-solid fa-print"></i> Print</button>' +
+        '<a href="add-doctor.html" class="btn btn-emerald"><i class="fa-solid fa-plus"></i> Add Doctor</a></div></div>' +
+        '<div class="table-wrap fade-in-up"><div class="table-toolbar">' +
+        '<div class="search"><i class="fa-solid fa-magnifying-glass"></i><input class="input" id="search" placeholder="Search by name, ID, specialization…"></div>' +
+        '<select class="select" id="filterSpec" style="max-width:220px"><option value="">All Specializations</option></select>' +
+        '<select class="select" id="filterStatus" style="max-width:180px"><option value="">All Status</option><option>Available</option><option>On Leave</option></select>' +
+        '<select class="select" id="sortBy" style="max-width:180px"><option value="newest">Newest first</option><option value="name">Name A-Z</option><option value="exp">Experience</option><option value="fee">Fee</option></select>' +
+        '</div><div class="table-scroll"><table class="data"><thead><tr>' +
+        '<th>Doctor</th><th>Doctor ID</th><th>Qualification</th><th>Specialization</th><th>Department</th><th>Exp</th><th>Fee</th><th>Phone</th><th>Availability</th><th>Status</th><th>Actions</th>' +
+        '</tr></thead><tbody id="dbody"></tbody></table></div><div class="pagination" id="pager"></div></div>'
+      );
+
+      let all = []; let page = 1; const size = 10;
+
+      async function load() {
+        all = await API.list("doctors");
+        const specs = Array.from(new Set(all.map((d) => d.spec).filter(Boolean)));
+        const sel = document.getElementById("filterSpec");
+        specs.forEach((s) => { const o = document.createElement("option"); o.value = s; o.textContent = s; sel.appendChild(o); });
+        render();
+      }
+
+      function filtered() {
+        const q = document.getElementById("search").value.trim().toLowerCase();
+        const spec = document.getElementById("filterSpec").value;
+        const status = document.getElementById("filterStatus").value;
+        const sort = document.getElementById("sortBy").value;
+        let rows = all.slice();
+        if (q) rows = rows.filter((d) => (d.name + " " + d.id + " " + d.spec + " " + d.qual).toLowerCase().includes(q));
+        if (spec) rows = rows.filter((d) => d.spec === spec);
+        if (status) rows = rows.filter((d) => d.status === status);
+        if (sort === "newest") rows.sort((a, b) => new Date(b.createdAt || 0) - new Date(a.createdAt || 0));
+        else if (sort === "name") rows.sort((a, b) => a.name.localeCompare(b.name));
+        else if (sort === "exp") rows.sort((a, b) => Number(b.exp) - Number(a.exp));
+        else if (sort === "fee") rows.sort((a, b) => Number(b.fee) - Number(a.fee));
+        return rows;
+      }
+
+      function render() {
+        const rows = filtered();
+        document.getElementById("docCount").textContent = all.length + (all.length === 1 ? " doctor" : " doctors") + " • " + rows.length + " matched";
+        const pg = Utils.paginate(rows, page, size);
+        const body = document.getElementById("dbody");
+        if (!pg.data.length) {
+          body.innerHTML = '<tr><td colspan="11"><div class="empty-state"><i class="fa-solid fa-user-doctor"></i>No doctors found. Click <b>Add Doctor</b> to create one.</div></td></tr>';
+        } else {
+          body.innerHTML = pg.data.map((d) =>
+            '<tr><td data-label="Doctor"><div class="row-cell">' + Utils.avatarHtml(d.name, d.photo, 36) +
+            '<div class="meta"><b>' + Utils.escapeHtml(d.name) + '</b><small>' + Utils.escapeHtml(d.email || "") + '</small></div></div></td>' +
+            '<td data-label="Doctor ID"><b>' + Utils.escapeHtml(d.id) + '</b></td>' +
+            '<td data-label="Qualification">' + Utils.escapeHtml(d.qual || "—") + '</td>' +
+            '<td data-label="Specialization">' + Utils.escapeHtml(d.spec || "—") + '</td>' +
+            '<td data-label="Department">' + Utils.escapeHtml(d.department || "—") + '</td>' +
+            '<td data-label="Exp">' + Utils.escapeHtml(d.exp || "—") + ' yrs</td>' +
+            '<td data-label="Fee">' + Utils.fmtMoney(d.fee) + '</td>' +
+            '<td data-label="Phone">' + Utils.escapeHtml(d.phone || "—") + '</td>' +
+            '<td data-label="Availability"><small>' + Utils.escapeHtml(d.days || "") + '<br>' + Utils.escapeHtml(d.time || "") + '</small></td>' +
+            '<td data-label="Status">' + Utils.statusBadge(d.status) + '</td>' +
+            '<td data-label="Actions"><div class="row-actions">' +
+            '<button class="view" data-view="' + Utils.escapeHtml(d.id) + '"><i class="fa-solid fa-eye"></i></button>' +
+            '<button class="edit" data-edit="' + Utils.escapeHtml(d.id) + '"><i class="fa-solid fa-pen"></i></button>' +
+            '<button class="del" data-del="' + Utils.escapeHtml(d.id) + '"><i class="fa-solid fa-trash"></i></button></div></td></tr>'
+          ).join("");
+        }
+        renderPager(pg);
+      }
+
+      function renderPager(pg) {
+        const pager = document.getElementById("pager");
+        const btns = [];
+        for (let i = 1; i <= pg.pages; i++) btns.push('<button class="' + (i === pg.page ? "active" : "") + '" data-page="' + i + '">' + i + '</button>');
+        pager.innerHTML = '<div class="info">Showing ' + ((pg.page - 1) * pg.size + 1) + '–' + Math.min(pg.page * pg.size, pg.total) + ' of ' + pg.total + '</div>' +
+          '<div class="pages"><button data-page="' + Math.max(1, pg.page - 1) + '" ' + (pg.page === 1 ? "disabled" : "") + '><i class="fa-solid fa-chevron-left"></i></button>' + btns.join("") +
+          '<button data-page="' + Math.min(pg.pages, pg.page + 1) + '" ' + (pg.page === pg.pages ? "disabled" : "") + '><i class="fa-solid fa-chevron-right"></i></button></div>';
+      }
+
+      document.getElementById("search").addEventListener("input", Utils.debounce(() => { page = 1; render(); }, 250));
+      document.getElementById("filterSpec").addEventListener("change", () => { page = 1; render(); });
+      document.getElementById("filterStatus").addEventListener("change", () => { page = 1; render(); });
+      document.getElementById("sortBy").addEventListener("change", () => render());
+      document.getElementById("pager").addEventListener("click", (e) => { const b = e.target.closest("button[data-page]"); if (!b) return; page = parseInt(b.getAttribute("data-page"), 10); render(); });
+      document.getElementById("dbody").addEventListener("click", async (e) => {
+        const v = e.target.closest("[data-view]"); const ed = e.target.closest("[data-edit]"); const dl = e.target.closest("[data-del]");
+        if (v) window.location.href = "doctor-details.html?id=" + encodeURIComponent(v.getAttribute("data-view"));
+        else if (ed) window.location.href = "add-doctor.html?id=" + encodeURIComponent(ed.getAttribute("data-edit"));
+        else if (dl) { if (!confirm("Delete this doctor?")) return; await API.removeOne("doctors", dl.getAttribute("data-del")); Validation.toast("Doctor deleted", "success"); load(); }
+      });
+      document.getElementById("exportCsv").addEventListener("click", () => {
+        const rows = filtered().map((d) => ({ id: d.id, name: d.name, qual: d.qual, spec: d.spec, department: d.department, exp: d.exp, fee: d.fee, phone: d.phone, status: d.status }));
+        Utils.exportCSV("doctors.csv", rows); Validation.toast("CSV exported", "success");
+      });
+      document.getElementById("printBtn").addEventListener("click", () => Utils.printArea(document.querySelector(".table-wrap")));
+      load();
+    })();
+  </script>
+</body>
+</html>

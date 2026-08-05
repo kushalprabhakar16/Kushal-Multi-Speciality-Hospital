@@ -1,0 +1,83 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kushal Multi Speciality Hospital — Login</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/theme.css" />
+  <link rel="stylesheet" href="css/login.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563eb'/%3E%3Cpath d='M26 14h12v12h12v12H38v12H26V38H14V26h12z' fill='%23fff'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <div class="auth-page">
+    <div class="auth-bg">
+      <div class="blob b1"></div>
+      <div class="blob b2"></div>
+      <div class="blob b3"></div>
+      <svg class="auth-ecg" viewBox="0 0 1200 120" preserveAspectRatio="none">
+        <path class="ecg-line" d="M0 60 H300 L330 30 L360 90 L390 60 H600 L630 20 L660 100 L690 60 H900 L930 35 L960 85 L990 60 H1200"
+          stroke="#38bdf8" stroke-width="3" fill="none" />
+      </svg>
+    </div>
+
+    <div class="auth-card">
+      <div class="auth-logo">
+        <span id="authLogo"></span>
+        <div>
+          <div class="auth-title">KUSHAL</div>
+          <div class="auth-sub" style="margin:0">Multi Speciality Hospital</div>
+        </div>
+      </div>
+      <div class="auth-sub" style="margin-top:14px">Sign in to your account to continue</div>
+
+      <div class="auth-error" id="authError"></div>
+
+      <form id="loginForm" novalidate>
+        <div class="auth-field">
+          <label for="email">Email Address</label>
+          <i class="fa-solid fa-envelope"></i>
+          <input class="input" type="email" id="email" placeholder="you@kmsh.in" autocomplete="username" required />
+        </div>
+        <div class="auth-field">
+          <label for="password">Password</label>
+          <i class="fa-solid fa-lock"></i>
+          <input class="input" type="password" id="password" placeholder="Enter your password" autocomplete="current-password" required />
+          <button type="button" class="toggle-pw" id="togglePw" aria-label="Show password"><i class="fa-solid fa-eye"></i></button>
+        </div>
+        <div class="auth-row">
+          <label><input type="checkbox" class="auth-check" id="remember" /> Remember me</label>
+          <a href="#" id="forgot">Forgot password?</a>
+        </div>
+        <button type="submit" class="auth-btn" id="loginBtn">
+          <span id="loginBtnText">Sign In</span>
+          <i class="fa-solid fa-arrow-right"></i>
+        </button>
+      </form>
+
+      <div class="auth-divider">or</div>
+      <button class="auth-btn demo" id="demoBtn">
+        <i class="fa-solid fa-bolt"></i> Demo Login (Administrator)
+      </button>
+
+      <div class="auth-foot">
+        New to the hospital? <a href="register.html">Create an account</a>
+      </div>
+      <div class="login-mode-badge" id="modeBadge">Checking connection…</div>
+    </div>
+  </div>
+
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/validation.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/login.js"></script>
+</body>
+</html>

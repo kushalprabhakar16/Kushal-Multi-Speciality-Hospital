@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kushal Multi Speciality Hospital — Doctor Profile</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="css/theme.css" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/buttons.css" />
+  <link rel="stylesheet" href="css/forms.css" />
+  <link rel="stylesheet" href="css/tables.css" />
+  <link rel="stylesheet" href="css/sidebar.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563eb'/%3E%3Cpath d='M26 14h12v12h12v12H38v12H26V38H14V26h12z' fill='%23fff'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/validation.js"></script>
+  <script src="js/upload.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    (function () {
+      "use strict";
+      const user = Auth.requireAuth();
+      if (!user) return;
+      Auth.renderShell(user, "doctors.html");
+      const content = document.getElementById("pageContent");
+      content.insertAdjacentHTML("beforeend", '<div id="dd" class="fade-in-up"></div>');
+      const host = document.getElementById("dd");
+      const id = Utils.getParam("id");
+
+      async function load() {
+        const [d, patients, appts] = await Promise.all([API.getOne("doctors", id), API.list("patients"), API.list("appointments")]);
+        if (!d) { host.innerHTML = '<div class="empty-state"><i class="fa-solid fa-user-xmark"></i>Doctor not found.</div>'; return; }
+        document.title = d.name + " — Kushal Multi Speciality Hospital";
+        const myPatients = patients.filter((p) => p.doctor === d.name);
+        const myAppts = appts.filter((a) => a.doctor === d.name);
+        const completed = myAppts.filter((a) => a.status === "Completed").length;
+        const rating = (4 + (d.exp % 1)).toFixed(1);
+
+        host.innerHTML =
+          '<div class="page-head"><div class="left"><div class="icon-pill" style="background:linear-gradient(135deg,#059669,#047857)"><i class="fa-solid fa-id-card"></i></div><div><div class="page-title">Doctor Profile</div><div class="page-sub">Professional record</div></div></div>' +
+          '<div class="actions"><a href="doctors.html" class="btn btn-ghost"><i class="fa-solid fa-arrow-left"></i> Back</a>' +
+          '<a href="add-doctor.html?id=' + encodeURIComponent(d.id) + '" class="btn btn-ghost"><i class="fa-solid fa-pen"></i> Edit</a>' +
+          '<button class="btn btn-ghost" id="printBtn"><i class="fa-solid fa-print"></i> Print</button>' +
+          '<button class="btn btn-red" id="delBtn"><i class="fa-solid fa-trash"></i> Delete</button></div></div>' +
+          '<div class="detail-header" style="background:linear-gradient(135deg,#059669,#047857)">' + Utils.avatarHtml(d.name, d.photo, 92) +
+          '<div><h2>' + Utils.escapeHtml(d.name) + '</h2><div class="meta-row"><span><i class="fa-solid fa-id-badge"></i> ' + Utils.escapeHtml(d.id) + '</span>' +
+          '<span><i class="fa-solid fa-stethoscope"></i> ' + Utils.escapeHtml(d.spec || "—") + '</span>' +
+          '<span><i class="fa-solid fa-building"></i> ' + Utils.escapeHtml(d.department || "—") + '</span>' +
+          '<span><i class="fa-solid fa-clock"></i> ' + Utils.escapeHtml((d.days || "") + " " + (d.time || "")) + '</span></div>' +
+          '<div style="margin-top:8px">' + Utils.statusBadge(d.status) + '</div></div></div>' +
+          '<div class="stat-grid">' +
+          stat("fa-user-injured", "Total Patients", myPatients.length, "Under care", "stat-blue") +
+          stat("fa-calendar-check", "Appointments", myAppts.length, "All time", "stat-emerald") +
+          stat("fa-circle-check", "Consultations", completed, "Completed", "stat-purple") +
+          stat("fa-award", "Experience", (d.exp || 0) + " yrs", "Years", "stat-gold") +
+          stat("fa-star", "Rating", rating, "Patient score", "stat-orange") +
+          '</div>' +
+          '<div class="grid-2" style="margin-bottom:18px">' +
+          '<div class="card"><h3 class="section-title">Personal Details</h3><div class="info-grid">' +
+          info("Full Name", d.name) + info("Doctor ID", d.id) + info("Gender", d.gender || "—") + info("Date of Birth", Utils.fmtDate(d.dob)) +
+          info("Phone", d.phone || "—") + info("Email", d.email || "—") + info("Hospital Address", d.address || "—") + info("Room Number", d.room || "—") +
+          '</div></div>' +
+          '<div class="card"><h3 class="section-title">Professional Details</h3><div class="info-grid">' +
+          info("Qualification", d.qual || "—") + info("Specialization", d.spec || "—") + info("Department", d.department || "—") +
+          info("Experience", (d.exp || "—") + " years") + info("Medical License", d.license || "—") + info("Consultation Fee", Utils.fmtMoney(d.fee)) +
+          info("Available Days", d.days || "—") + info("Available Time", d.time || "—") + info("Languages", d.languages || "—") +
+          info("Biography", d.bio || "—") + info("Certifications", d.certifications || "—") + info("Awards", d.awards || "—") +
+          '</div></div></div>' +
+          '<div class="card"><h3 class="section-title">Documents</h3><label class="file-drop" style="margin-bottom:14px"><input type="file" id="docFile" accept="image/*,application/pdf"><i class="fa-solid fa-cloud-arrow-up"></i><div>Upload degree, certificate, license…</div></label><div id="docList"></div></div>';
+
+        document.getElementById("printBtn").addEventListener("click", () => Utils.printArea(host));
+        document.getElementById("delBtn").addEventListener("click", async () => {
+          if (!confirm("Delete this doctor permanently?")) return;
+          await API.removeOne("doctors", d.id);
+          Validation.toast("Doctor deleted", "success");
+          setTimeout(() => window.location.href = "doctors.html", 600);
+        });
+
+        renderDocs(d);
+        document.getElementById("docFile").addEventListener("change", async (e) => {
+          const f = e.target.files[0]; if (!f) return;
+          const err = Upload.validate(f); if (err) { Validation.toast(err, "error"); return; }
+          const url = await Utils.readFileAsDataURL(f);
+          const docs = d.documents ? d.documents.slice() : [];
+          docs.push({ name: f.name, type: f.type, url, uploaded: new Date().toISOString() });
+          await API.updateOne("doctors", d.id, { documents: docs });
+          Validation.toast("Document uploaded", "success");
+          d.documents = docs; renderDocs(d);
+        });
+      }
+
+      function stat(icon, label, value, foot, cls) {
+        return '<div class="stat-card ' + cls + '"><i class="fa-solid ' + icon + ' stat-icon"></i><div class="stat-label">' + label + '</div><div class="stat-value">' + value + '</div><div class="stat-foot">' + foot + '</div></div>';
+      }
+      function info(k, v) { return '<div class="info-item"><div class="k">' + Utils.escapeHtml(k) + '</div><div class="v">' + Utils.escapeHtml(v == null ? "—" : String(v)) + '</div></div>'; }
+      function renderDocs(d) {
+        const list = document.getElementById("docList");
+        const docs = d.documents || [];
+        if (!docs.length) { list.innerHTML = '<div class="muted" style="padding:8px 0">No documents uploaded yet.</div>'; return; }
+        list.innerHTML = docs.map((doc, i) =>
+          '<div class="list-row">' + (doc.type && doc.type.startsWith("image/") ? '<img src="' + doc.url + '" style="width:40px;height:40px;border-radius:8px;object-fit:cover"/>' : '<div class="avatar avatar-text" style="width:40px;height:40px;background:var(--primary)"><i class="fa-solid fa-file-lines"></i></div>') +
+          '<div class="lr-meta"><b>' + Utils.escapeHtml(doc.name) + '</b><small>' + Utils.escapeHtml(Utils.fmtDate(doc.uploaded)) + '</small></div>' +
+          '<div class="row-actions"><a class="btn btn-sm btn-ghost" href="' + doc.url + '" target="_blank" download="' + Utils.escapeHtml(doc.name) + '"><i class="fa-solid fa-download"></i></a>' +
+          '<button class="del" data-doc="' + i + '"><i class="fa-solid fa-trash"></i></button></div></div>'
+        ).join("");
+        list.querySelectorAll("[data-doc]").forEach((b) => b.addEventListener("click", async () => {
+          if (!confirm("Remove this document?")) return;
+          const docs = d.documents.slice(); docs.splice(parseInt(b.getAttribute("data-doc"), 10), 1);
+          await API.updateOne("doctors", d.id, { documents: docs });
+          d.documents = docs; renderDocs(d); Validation.toast("Document removed", "info");
+        }));
+      }
+
+      load().catch((e) => Validation.toast("Could not load doctor: " + e.message, "error"));
+    })();
+  </script>
+</body>
+</html>
