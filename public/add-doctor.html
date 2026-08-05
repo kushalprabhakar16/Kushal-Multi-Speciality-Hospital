@@ -1,0 +1,131 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kushal Multi Speciality Hospital — Add Doctor</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="css/theme.css" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/buttons.css" />
+  <link rel="stylesheet" href="css/forms.css" />
+  <link rel="stylesheet" href="css/tables.css" />
+  <link rel="stylesheet" href="css/sidebar.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563eb'/%3E%3Cpath d='M26 14h12v12h12v12H38v12H26V38H14V26h12z' fill='%23fff'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/validation.js"></script>
+  <script src="js/upload.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    (function () {
+      "use strict";
+      const user = Auth.requireAuth();
+      if (!user) return;
+      Auth.renderShell(user, "doctors.html");
+      const editId = Utils.getParam("id");
+      const isEdit = !!editId;
+      let photoData = "";
+      const content = document.getElementById("pageContent");
+      content.insertAdjacentHTML("beforeend",
+        '<div class="page-head fade-in-up"><div class="left"><div class="icon-pill" style="background:linear-gradient(135deg,#059669,#047857)"><i class="fa-solid fa-user-doctor"></i></div>' +
+        '<div><div class="page-title">' + (isEdit ? "Edit Doctor" : "Add Doctor") + '</div><div class="page-sub">All fields marked <span style="color:var(--danger)">*</span> are required.</div></div></div>' +
+        '<div class="actions"><a href="doctors.html" class="btn btn-ghost"><i class="fa-solid fa-arrow-left"></i> Back</a></div></div>' +
+        '<form id="dform" class="form-card fade-in-up">' +
+        '<div class="form-section"><h3>Photo & Identity</h3><div class="form-grid">' +
+        '<div class="field"><label>Doctor Photo</label><label class="file-drop"><input type="file" id="photo" accept="image/*"><i class="fa-solid fa-camera"></i><div>Click to upload doctor photo</div></label><div class="image-preview" id="photoPreview"></div></div>' +
+        '<div class="field"><label>Doctor ID <small class="muted">(auto)</small></label><input class="input" id="id" readonly></div>' +
+        '<div class="field"><label>Full Name <span class="req">*</span></label><input class="input" id="name" required></div>' +
+        '<div class="field"><label>Gender</label><select class="select" id="gender"><option value="">Select</option><option>Male</option><option>Female</option><option>Other</option></select></div>' +
+        '<div class="field"><label>Date of Birth</label><input class="input" type="date" id="dob"></div>' +
+        '<div class="field"><label>Medical License Number</label><input class="input" id="license"></div>' +
+        '</div></div>' +
+        '<div class="form-section"><h3>Professional</h3><div class="form-grid">' +
+        '<div class="field"><label>Qualification <span class="req">*</span></label><input class="input" id="qual" required></div>' +
+        '<div class="field"><label>Specialization <span class="req">*</span></label><input class="input" id="spec" required></div>' +
+        '<div class="field"><label>Department <span class="req">*</span></label><select class="select" id="department" required></select></div>' +
+        '<div class="field"><label>Experience (years)</label><input class="input" type="number" id="exp"></div>' +
+        '<div class="field"><label>Consultation Fee (₹)</label><input class="input" type="number" id="fee"></div>' +
+        '<div class="field"><label>Room Number</label><input class="input" id="room"></div>' +
+        '<div class="field"><label>Available Days</label><input class="input" id="days" placeholder="Mon-Fri"></div>' +
+        '<div class="field"><label>Available Time</label><input class="input" id="time" placeholder="09:00-17:00"></div>' +
+        '<div class="field"><label>Languages</label><input class="input" id="languages"></div>' +
+        '<div class="field"><label>Status</label><select class="select" id="status"><option>Available</option><option>On Leave</option></select></div>' +
+        '</div></div>' +
+        '<div class="form-section"><h3>Contact</h3><div class="form-grid">' +
+        '<div class="field"><label>Phone <span class="req">*</span></label><input class="input" id="phone" required></div>' +
+        '<div class="field"><label>Email</label><input class="input" id="email" type="email"></div>' +
+        '<div class="field"><label>Hospital Address</label><input class="input" id="address"></div>' +
+        '</div></div>' +
+        '<div class="form-section"><h3>About</h3><div class="form-grid">' +
+        '<div class="field" style="grid-column:1/-1"><label>Biography</label><textarea class="textarea" id="bio"></textarea></div>' +
+        '<div class="field"><label>Certifications</label><input class="input" id="certifications"></div>' +
+        '<div class="field"><label>Awards</label><input class="input" id="awards"></div>' +
+        '</div></div>' +
+        '<div class="btn-row" style="margin-top:8px"><button type="submit" class="btn btn-emerald btn-lg" id="saveBtn"><i class="fa-solid fa-floppy-disk"></i> ' + (isEdit ? "Update Doctor" : "Save Doctor") + '</button>' +
+        '<a href="doctors.html" class="btn btn-ghost btn-lg">Cancel</a></div></form>'
+      );
+
+      Upload.bind("photo", "photoPreview", (url) => { photoData = url || ""; });
+
+      async function init() {
+        const depts = await API.list("departments");
+        const sel = document.getElementById("department");
+        depts.forEach((d) => { const o = document.createElement("option"); o.value = d.name; o.textContent = d.name; sel.appendChild(o); });
+        if (isEdit) {
+          const d = await API.getOne("doctors", editId);
+          if (!d) { Validation.toast("Doctor not found", "error"); setTimeout(() => window.location.href = "doctors.html", 800); return; }
+          ["id","name","gender","dob","license","qual","spec","department","exp","fee","room","days","time","languages","status","phone","email","address","bio","certifications","awards"].forEach((k) => { const el = document.getElementById(k); if (el && d[k] != null) el.value = d[k]; });
+          photoData = d.photo || "";
+          if (photoData) document.getElementById("photoPreview").innerHTML = '<img src="' + photoData + '" /><button type="button" class="preview-remove"><i class="fa-solid fa-xmark"></i></button>';
+          document.querySelector(".preview-remove")?.addEventListener("click", () => { photoData = ""; document.getElementById("photoPreview").innerHTML = ""; });
+        } else {
+          document.getElementById("id").value = Utils.nextDoctorId();
+        }
+      }
+
+      document.getElementById("dform").addEventListener("submit", async function (e) {
+        e.preventDefault();
+        const data = {
+          id: document.getElementById("id").value, photo: photoData,
+          name: document.getElementById("name").value.trim(),
+          gender: document.getElementById("gender").value, dob: document.getElementById("dob").value,
+          license: document.getElementById("license").value.trim(),
+          qual: document.getElementById("qual").value.trim(), spec: document.getElementById("spec").value.trim(),
+          department: document.getElementById("department").value, exp: document.getElementById("exp").value,
+          fee: document.getElementById("fee").value, room: document.getElementById("room").value.trim(),
+          days: document.getElementById("days").value.trim(), time: document.getElementById("time").value.trim(),
+          languages: document.getElementById("languages").value.trim(), status: document.getElementById("status").value,
+          phone: document.getElementById("phone").value.trim(), email: document.getElementById("email").value.trim(),
+          address: document.getElementById("address").value.trim(), bio: document.getElementById("bio").value.trim(),
+          certifications: document.getElementById("certifications").value.trim(), awards: document.getElementById("awards").value.trim(),
+        };
+        const errs = Validation.validateDoctor(data);
+        if (errs.length) { Validation.toast(errs[0], "error"); return; }
+        const btn = document.getElementById("saveBtn"); btn.disabled = true;
+        try {
+          if (isEdit) { await API.updateOne("doctors", editId, data); Validation.toast("Doctor updated", "success"); }
+          else {
+            await API.create("doctors", Object.assign(data, { createdAt: new Date().toISOString() }));
+            Storage.addNotification({ type: "doctor", title: "New doctor added", message: data.name + " (" + data.id + ")" });
+            Validation.toast("Doctor saved", "success");
+          }
+          setTimeout(() => { window.location.href = "doctors.html"; }, 600);
+        } catch (err) { Validation.toast(err.message || "Save failed", "error"); btn.disabled = false; }
+      });
+
+      init();
+    })();
+  </script>
+</body>
+</html>

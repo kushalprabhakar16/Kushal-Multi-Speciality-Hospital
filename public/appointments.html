@@ -1,0 +1,137 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kushal Multi Speciality Hospital — Appointments</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="css/theme.css" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/buttons.css" />
+  <link rel="stylesheet" href="css/forms.css" />
+  <link rel="stylesheet" href="css/tables.css" />
+  <link rel="stylesheet" href="css/sidebar.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563eb'/%3E%3Cpath d='M26 14h12v12h12v12H38v12H26V38H14V26h12z' fill='%23fff'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/validation.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    (function () {
+      "use strict";
+      const user = Auth.requireAuth();
+      if (!user) return;
+      Auth.renderShell(user, "appointments.html");
+      const content = document.getElementById("pageContent");
+      content.insertAdjacentHTML("beforeend",
+        '<div class="page-head fade-in-up"><div class="left"><div class="icon-pill" style="background:linear-gradient(135deg,#7c3aed,#6d28d9)"><i class="fa-solid fa-calendar-check"></i></div>' +
+        '<div><div class="page-title">Appointments</div><div class="page-sub" id="apptCount">Loading…</div></div></div>' +
+        '<div class="actions"><button class="btn btn-purple" id="newBtn"><i class="fa-solid fa-plus"></i> Book Appointment</button></div></div>' +
+        '<div class="table-wrap fade-in-up"><div class="table-toolbar">' +
+        '<div class="search"><i class="fa-solid fa-magnifying-glass"></i><input class="input" id="search" placeholder="Search patient, doctor, reason…"></div>' +
+        '<select class="select" id="filterStatus" style="max-width:180px"><option value="">All Status</option><option>Pending</option><option>Completed</option><option>Cancelled</option></select>' +
+        '<input class="input" type="date" id="filterDate" style="max-width:180px"></select>' +
+        '</div><div class="table-scroll"><table class="data"><thead><tr><th>ID</th><th>Patient</th><th>Doctor</th><th>Department</th><th>Date</th><th>Time</th><th>Reason</th><th>Status</th><th>Actions</th></tr></thead><tbody id="tbody"></tbody></table></div><div class="pagination" id="pager"></div></div>'
+      );
+
+      let all = []; let page = 1; const size = 10;
+      async function load() { all = await API.list("appointments"); render(); }
+      function filtered() {
+        const q = document.getElementById("search").value.trim().toLowerCase();
+        const st = document.getElementById("filterStatus").value;
+        const dt = document.getElementById("filterDate").value;
+        let rows = all.slice();
+        if (q) rows = rows.filter((a) => (a.patient + " " + a.doctor + " " + a.reason + " " + a.id).toLowerCase().includes(q));
+        if (st) rows = rows.filter((a) => a.status === st);
+        if (dt) rows = rows.filter((a) => (a.date || "").slice(0, 10) === dt);
+        rows.sort((a, b) => new Date(b.date + "T" + (b.time || "00:00")) - new Date(a.date + "T" + (a.time || "00:00")));
+        return rows;
+      }
+      function render() {
+        const rows = filtered();
+        document.getElementById("apptCount").textContent = all.length + " appointments • " + rows.length + " matched";
+        const pg = Utils.paginate(rows, page, size);
+        const body = document.getElementById("tbody");
+        if (!pg.data.length) body.innerHTML = '<tr><td colspan="9"><div class="empty-state"><i class="fa-solid fa-calendar"></i>No appointments found.</div></td></tr>';
+        else body.innerHTML = pg.data.map((a) =>
+          '<tr><td data-label="ID"><b>' + Utils.escapeHtml(a.id) + '</b></td><td data-label="Patient">' + Utils.escapeHtml(a.patient || "—") + '</td>' +
+          '<td data-label="Doctor">' + Utils.escapeHtml(a.doctor || "—") + '</td><td data-label="Department">' + Utils.escapeHtml(a.department || "—") + '</td>' +
+          '<td data-label="Date">' + Utils.escapeHtml(Utils.fmtDate(a.date)) + '</td><td data-label="Time">' + Utils.escapeHtml(a.time || "—") + '</td>' +
+          '<td data-label="Reason">' + Utils.escapeHtml(a.reason || "—") + '</td><td data-label="Status">' + Utils.statusBadge(a.status) + '</td>' +
+          '<td data-label="Actions"><div class="row-actions"><button class="view" data-id="' + Utils.escapeHtml(a.id) + '"><i class="fa-solid fa-eye"></i></button>' +
+          '<button class="del" data-id="' + Utils.escapeHtml(a.id) + '"><i class="fa-solid fa-trash"></i></button></div></td></tr>'
+        ).join("");
+        renderPager(pg);
+      }
+      function renderPager(pg) {
+        const pager = document.getElementById("pager");
+        const btns = []; for (let i = 1; i <= pg.pages; i++) btns.push('<button class="' + (i === pg.page ? "active" : "") + '" data-page="' + i + '">' + i + '</button>');
+        pager.innerHTML = '<div class="info">Showing ' + ((pg.page - 1) * pg.size + 1) + '–' + Math.min(pg.page * pg.size, pg.total) + ' of ' + pg.total + '</div>' +
+          '<div class="pages"><button data-page="' + Math.max(1, pg.page - 1) + '" ' + (pg.page === 1 ? "disabled" : "") + '><i class="fa-solid fa-chevron-left"></i></button>' + btns.join("") +
+          '<button data-page="' + Math.min(pg.pages, pg.page + 1) + '" ' + (pg.page === pg.pages ? "disabled" : "") + '><i class="fa-solid fa-chevron-right"></i></button></div>';
+      }
+      document.getElementById("search").addEventListener("input", Utils.debounce(() => { page = 1; render(); }, 250));
+      document.getElementById("filterStatus").addEventListener("change", () => { page = 1; render(); });
+      document.getElementById("filterDate").addEventListener("change", () => { page = 1; render(); });
+      document.getElementById("pager").addEventListener("click", (e) => { const b = e.target.closest("button[data-page]"); if (!b) return; page = parseInt(b.getAttribute("data-page"), 10); render(); });
+      document.getElementById("tbody").addEventListener("click", async (e) => {
+        const dl = e.target.closest("[data-id]"); if (!dl) return;
+        if (dl.classList.contains("del")) { if (!confirm("Cancel/delete this appointment?")) return; await API.removeOne("appointments", dl.getAttribute("data-id")); Validation.toast("Appointment deleted", "success"); load(); }
+        else { Validation.toast("Appointment: " + dl.getAttribute("data-id"), "info"); }
+      });
+
+      document.getElementById("newBtn").addEventListener("click", () => openModal());
+      let patients = [], doctors = [];
+      async function openModal(id) {
+        if (!patients.length) { patients = await API.list("patients"); doctors = await API.list("doctors"); }
+        const a = id ? await API.getOne("appointments", id) : {};
+        const back = document.createElement("div"); back.className = "modal-backdrop";
+        back.innerHTML = '<div class="modal"><div class="modal-head"><h3>' + (id ? "Edit Appointment" : "Book Appointment") + '</h3><button class="icon-btn" id="mClose"><i class="fa-solid fa-xmark"></i></button></div>' +
+          '<div class="modal-body"><form id="mForm"><div class="form-grid">' +
+          '<div class="field"><label>Patient <span class="req">*</span></label><select class="select" id="mPatient" required>' + patients.map((p) => '<option value="' + Utils.escapeHtml(p.firstName + " " + p.lastName) + '" data-id="' + Utils.escapeHtml(p.id) + '">' + Utils.escapeHtml(p.firstName + " " + p.lastName + " (" + p.id + ")") + '</option>').join("") + '</select></div>' +
+          '<div class="field"><label>Doctor <span class="req">*</span></label><select class="select" id="mDoctor" required>' + doctors.map((d) => '<option value="' + Utils.escapeHtml(d.name) + '" data-dept="' + Utils.escapeHtml(d.department || "") + '">' + Utils.escapeHtml(d.name + " (" + d.spec + ")") + '</option>').join("") + '</select></div>' +
+          '<div class="field"><label>Department</label><input class="input" id="mDept" readonly></div>' +
+          '<div class="field"><label>Date <span class="req">*</span></label><input class="input" type="date" id="mDate" required></div>' +
+          '<div class="field"><label>Time <span class="req">*</span></label><input class="input" type="time" id="mTime" required></div>' +
+          '<div class="field"><label>Status</label><select class="select" id="mStatus"><option>Pending</option><option>Completed</option><option>Cancelled</option></select></div>' +
+          '<div class="field" style="grid-column:1/-1"><label>Reason</label><input class="input" id="mReason"></div>' +
+          '<div class="field" style="grid-column:1/-1"><label>Notes</label><textarea class="textarea" id="mNotes"></textarea></div>' +
+          '</div></form></div><div class="modal-foot"><button class="btn btn-ghost" id="mCancel">Cancel</button><button class="btn btn-purple" id="mSave"><i class="fa-solid fa-floppy-disk"></i> Save</button></div></div>';
+        document.body.appendChild(back);
+        if (a) { document.getElementById("mPatient").value = a.patient; document.getElementById("mDoctor").value = a.doctor; document.getElementById("mDept").value = a.department || ""; document.getElementById("mDate").value = (a.date || "").slice(0, 10); document.getElementById("mTime").value = a.time || ""; document.getElementById("mStatus").value = a.status || "Pending"; document.getElementById("mReason").value = a.reason || ""; document.getElementById("mNotes").value = a.notes || ""; }
+        document.getElementById("mDoctor").addEventListener("change", function () { document.getElementById("mDept").value = this.options[this.selectedIndex].getAttribute("data-dept"); });
+        const close = () => back.remove();
+        document.getElementById("mClose").onclick = close; document.getElementById("mCancel").onclick = close;
+        back.addEventListener("click", (e) => { if (e.target === back) close(); });
+        document.getElementById("mSave").onclick = async () => {
+          const sel = document.getElementById("mPatient");
+          const data = {
+            id: id || Utils.nextAppointmentId(),
+            patient: sel.value, patientId: sel.options[sel.selectedIndex].getAttribute("data-id"),
+            doctor: document.getElementById("mDoctor").value, department: document.getElementById("mDept").value,
+            date: document.getElementById("mDate").value, time: document.getElementById("mTime").value,
+            reason: document.getElementById("mReason").value, status: document.getElementById("mStatus").value,
+            notes: document.getElementById("mNotes").value,
+          };
+          const errs = Validation.validateAppointment(data);
+          if (errs.length) { Validation.toast(errs[0], "error"); return; }
+          if (id) await API.updateOne("appointments", id, data);
+          else { await API.create("appointments", Object.assign(data, { createdAt: new Date().toISOString() })); Storage.addNotification({ type: "appointment", title: "New appointment booked", message: data.patient + " → " + data.doctor + " on " + data.date }); }
+          Validation.toast("Appointment saved", "success"); close(); load();
+        };
+      }
+      load();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,88 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kushal Multi Speciality Hospital — Reports</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="css/theme.css" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/buttons.css" />
+  <link rel="stylesheet" href="css/forms.css" />
+  <link rel="stylesheet" href="css/tables.css" />
+  <link rel="stylesheet" href="css/sidebar.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563eb'/%3E%3Cpath d='M26 14h12v12h12v12H38v12H26V38H14V26h12z' fill='%23fff'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/validation.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    (function () {
+      "use strict";
+      const user = Auth.requireAuth();
+      if (!user) return;
+      Auth.renderShell(user, "reports.html");
+      const content = document.getElementById("pageContent");
+      content.insertAdjacentHTML("beforeend",
+        '<div class="page-head fade-in-up"><div class="left"><div class="icon-pill" style="background:linear-gradient(135deg,#0f172a,#334155)"><i class="fa-solid fa-chart-line"></i></div>' +
+        '<div><div class="page-title">Reports & Analytics</div><div class="page-sub">Generate and export hospital reports</div></div></div></div>' +
+        '<div class="grid-2 fade-in-up">' +
+        '<div class="card"><h3 class="section-title">Report Types</h3><div id="reportList"></div></div>' +
+        '<div class="card"><h3 class="section-title">Department Performance</h3><div class="bar-chart" id="deptChart"></div></div></div>' +
+        '<div class="card fade-in-up" style="margin-top:16px"><h3 class="section-title">Revenue by Month</h3><div class="bar-chart" id="revChart" style="height:200px"></div></div>'
+      );
+
+      const reports = [
+        { name: "Patient Report", icon: "fa-user-injured", color: "stat-blue", fn: patientReport },
+        { name: "Doctor Report", icon: "fa-user-doctor", color: "stat-emerald", fn: doctorReport },
+        { name: "Appointment Report", icon: "fa-calendar-check", color: "stat-purple", fn: apptReport },
+        { name: "Surgery Report", icon: "fa-user-nurse", color: "stat-pink", fn: opReport },
+        { name: "Laboratory Report", icon: "fa-flask-vial", color: "stat-orange", fn: labReport },
+        { name: "Pharmacy Report", icon: "fa-prescription-bottle-medical", color: "stat-teal", fn: pharmReport },
+        { name: "Revenue Report", icon: "fa-file-invoice-dollar", color: "stat-gold", fn: revReport },
+        { name: "Department Report", icon: "fa-building-circle-check", color: "stat-red", fn: deptReport },
+      ];
+      document.getElementById("reportList").innerHTML = reports.map((r, i) =>
+        '<div class="list-row"><div class="icon-pill" style="width:38px;height:38px;flex:none"><i class="fa-solid ' + r.icon + '"></i></div>' +
+        '<div class="lr-meta"><b>' + r.name + '</b><small>Export as CSV</small></div>' +
+        '<div class="row-actions"><button class="view" data-rpt="' + i + '"><i class="fa-solid fa-file-csv"></i></button></div></div>'
+      ).join("");
+      document.getElementById("reportList").querySelectorAll("[data-rpt]").forEach((b) => b.addEventListener("click", () => reports[parseInt(b.getAttribute("data-rpt"), 10)].fn()));
+
+      async function getData() { return Promise.all([API.list("patients"), API.list("doctors"), API.list("appointments"), API.list("operations"), API.list("lab-tests"), API.list("pharmacy"), API.list("billing"), API.list("departments")]); }
+
+      async function patientReport() { const [p] = await getData(); Utils.exportCSV("patient-report.csv", p.map((x) => ({ id: x.id, name: x.firstName + " " + x.lastName, gender: x.gender, age: Utils.calcAge(x.dob), department: x.department, doctor: x.doctor, status: x.status, admission: x.admissionDate }))); Validation.toast("Patient report exported", "success"); }
+      async function doctorReport() { const [, d] = await getData(); Utils.exportCSV("doctor-report.csv", d.map((x) => ({ id: x.id, name: x.name, spec: x.spec, department: x.department, exp: x.exp, fee: x.fee, status: x.status }))); Validation.toast("Doctor report exported", "success"); }
+      async function apptReport() { const [, , a] = await getData(); Utils.exportCSV("appointment-report.csv", a.map((x) => ({ id: x.id, patient: x.patient, doctor: x.doctor, date: x.date, time: x.time, status: x.status }))); Validation.toast("Appointment report exported", "success"); }
+      async function opReport() { const [, , , o] = await getData(); Utils.exportCSV("surgery-report.csv", o.map((x) => ({ id: x.id, patient: x.patient, leadDoctor: x.leadDoctor, date: x.date, type: x.type, cost: x.cost, status: x.status }))); Validation.toast("Surgery report exported", "success"); }
+      async function labReport() { const [, , , , l] = await getData(); Utils.exportCSV("lab-report.csv", l.map((x) => ({ id: x.id, patient: x.patient, doctor: x.doctor, test: x.test, date: x.date, status: x.status }))); Validation.toast("Lab report exported", "success"); }
+      async function pharmReport() { const [, , , , , m] = await getData(); Utils.exportCSV("pharmacy-report.csv", m.map((x) => ({ id: x.id, name: x.name, category: x.category, supplier: x.supplier, qty: x.qty, price: x.price, expiry: x.expiry }))); Validation.toast("Pharmacy report exported", "success"); }
+      async function revReport() { const [, , , , , , b] = await getData(); Utils.exportCSV("revenue-report.csv", b.map((x) => ({ id: x.id, patient: x.patient, date: x.date, total: x.total, paid: x.paid, balance: x.balance, status: x.status }))); Validation.toast("Revenue report exported", "success"); }
+      async function deptReport() { const [p, d, , , , , , de] = await getData(); const rows = de.map((dep) => ({ id: dep.id, name: dep.name, doctors: d.filter((x) => x.department === dep.name).length, patients: p.filter((x) => x.department === dep.name).length })); Utils.exportCSV("department-report.csv", rows); Validation.toast("Department report exported", "success"); }
+
+      (async () => {
+        const [patients, , , , , , bills, depts] = await getData();
+        const chart = document.getElementById("deptChart");
+        const counts = depts.map((d) => ({ name: d.name, n: patients.filter((p) => p.department === d.name).length }));
+        const max = Math.max(1, ...counts.map((c) => c.n));
+        chart.innerHTML = counts.slice(0, 8).map((c) => '<div class="bar" style="height:' + Math.max(6, (c.n / max) * 100) + '%"><span>' + c.n + '</span><small>' + c.name.slice(0, 4) + '</small></div>').join("");
+        const rev = document.getElementById("revChart");
+        const months = [];
+        for (let i = 5; i >= 0; i--) { const d = new Date(); d.setMonth(d.getMonth() - i); const key = d.toISOString().slice(0, 7); const sum = bills.filter((b) => (b.date || "").slice(0, 7) === key).reduce((s, b) => s + Number(b.paid || 0), 0); months.push({ label: d.toLocaleString("en-IN", { month: "short" }), sum }); }
+        const maxR = Math.max(1, ...months.map((m) => m.sum));
+        rev.innerHTML = months.map((m) => '<div class="bar" style="height:' + Math.max(6, (m.sum / maxR) * 100) + '%"><span>' + (m.sum > 0 ? "₹" + (m.sum / 1000).toFixed(1) + "k" : "") + '</span><small>' + m.label + '</small></div>').join("");
+      })();
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kushal Multi Speciality Hospital — Settings</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css" referrerpolicy="no-referrer" />
+  <link rel="stylesheet" href="css/theme.css" />
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/buttons.css" />
+  <link rel="stylesheet" href="css/forms.css" />
+  <link rel="stylesheet" href="css/sidebar.css" />
+  <link rel="stylesheet" href="css/dashboard.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+  <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%232563eb'/%3E%3Cpath d='M26 14h12v12h12v12H38v12H26V38H14V26h12z' fill='%23fff'/%3E%3C/svg%3E" />
+</head>
+<body>
+  <script src="js/config.js"></script>
+  <script src="js/utils.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/api.js"></script>
+  <script src="js/validation.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    (function () {
+      "use strict";
+      const user = Auth.requireAuth();
+      if (!user) return;
+      Auth.renderShell(user, "settings.html");
+      const content = document.getElementById("pageContent");
+      content.insertAdjacentHTML("beforeend",
+        '<div class="page-head fade-in-up"><div class="left"><div class="icon-pill"><i class="fa-solid fa-gear"></i></div><div><div class="page-title">Settings</div><div class="page-sub">Configure your hospital system</div></div></div></div>' +
+        '<div class="grid-2 fade-in-up">' +
+        '<div class="card"><h3 class="section-title">Appearance</h3><div class="field"><label>Theme</label><div class="radio-row"><label class="radio"><input type="radio" name="theme" value="light" ' + (localStorage.getItem(window.API_CONFIG.THEME_KEY) !== "dark" ? "checked" : "") + '> Light</label><label class="radio"><input type="radio" name="theme" value="dark" ' + (localStorage.getItem(window.API_CONFIG.THEME_KEY) === "dark" ? "checked" : "") + '> Dark</label></div></div></div>' +
+        '<div class="card"><h3 class="section-title">API Configuration</h3><div class="field"><label>API Base URL</label><input class="input" id="apiUrl" value="' + Utils.escapeHtml(window.API_CONFIG.API_BASE_URL) + '"></div><div class="btn-row" style="margin-top:10px"><button class="btn" id="saveApi"><i class="fa-solid fa-floppy-disk"></i> Save</button><button class="btn btn-ghost" id="testApi"><i class="fa-solid fa-plug"></i> Test Connection</button></div><div id="apiStatus" class="muted" style="margin-top:8px;font-size:0.84rem"></div></div>' +
+        '<div class="card"><h3 class="section-title">Data Management</h3><p class="muted" style="font-size:0.86rem;margin-bottom:12px">Reset the local demonstration data stored in your browser.</p><div class="btn-row"><button class="btn btn-ghost" id="reseed"><i class="fa-solid fa-rotate"></i> Reload Sample Data</button><button class="btn btn-red" id="wipe"><i class="fa-solid fa-trash"></i> Clear All Local Data</button></div></div>' +
+        '<div class="card"><h3 class="section-title">System Information</h3><div class="info-grid">' +
+        '<div class="info-item"><div class="k">Application</div><div class="v">Kushal Multi Speciality Hospital v1.0</div></div>' +
+        '<div class="info-item"><div class="k">Mode</div><div class="v" id="modeInfo">—</div></div>' +
+        '<div class="info-item"><div class="k">Backend URL</div><div class="v">' + Utils.escapeHtml(window.API_CONFIG.API_BASE_URL) + '</div></div>' +
+        '<div class="info-item"><div class="k">User</div><div class="v">' + Utils.escapeHtml(user.name) + ' (' + Utils.escapeHtml(user.role) + ')</div></div></div></div>' +
+        '</div>'
+      );
+
+      document.querySelectorAll("input[name=theme]").forEach((r) => r.addEventListener("change", function () { Auth.applyTheme(this.value); localStorage.setItem(window.API_CONFIG.THEME_KEY, this.value); Validation.toast("Theme updated", "success"); }));
+      document.getElementById("saveApi").addEventListener("click", () => { window.API_CONFIG.API_BASE_URL = document.getElementById("apiUrl").value.trim(); Validation.toast("API URL saved. Reload to apply.", "info"); });
+      document.getElementById("testApi").addEventListener("click", async () => {
+        const s = document.getElementById("apiStatus"); s.textContent = "Testing…";
+        try { const r = await fetch(window.API_CONFIG.API_BASE_URL + "/health"); if (r.ok) { s.textContent = "Backend is online."; s.style.color = "var(--success)"; } else { s.textContent = "Backend responded with " + r.status; s.style.color = "var(--warning)"; } }
+        catch (e) { s.textContent = "Backend unreachable — Demo Mode active."; s.style.color = "var(--danger)"; }
+      });
+      document.getElementById("reseed").addEventListener("click", () => { if (!confirm("Reload sample demonstration data? Your current local changes will be replaced.")) return; Object.values(window.Storage.KEYS).forEach((k) => localStorage.removeItem(k)); localStorage.removeItem("kmsh_patient_seq"); localStorage.removeItem("kmsh_doctor_seq"); localStorage.removeItem("kmsh_appt_seq"); localStorage.removeItem("kmsh_op_seq"); localStorage.removeItem("kmsh_lab_seq"); localStorage.removeItem("kmsh_med_seq"); localStorage.removeItem("kmsh_bill_seq"); localStorage.removeItem("kmsh_staff_seq"); localStorage.removeItem("kmsh_dept_seq"); Storage.seedIfEmpty(); Validation.toast("Sample data reloaded", "success"); setTimeout(() => window.location.reload(), 600); });
+      document.getElementById("wipe").addEventListener("click", () => { if (!confirm("Clear ALL local data? This cannot be undone.")) return; Object.values(window.Storage.KEYS).forEach((k) => localStorage.removeItem(k)); ["kmsh_patient_seq","kmsh_doctor_seq","kmsh_appt_seq","kmsh_op_seq","kmsh_lab_seq","kmsh_med_seq","kmsh_bill_seq","kmsh_staff_seq","kmsh_dept_seq"].forEach((k) => localStorage.removeItem(k)); Validation.toast("Local data cleared", "info"); setTimeout(() => window.location.href = "login.html", 600); });
+      API.checkBackend().then((online) => { document.getElementById("modeInfo").textContent = online ? "Connected to backend" : "Demo Mode (LocalStorage)"; });
+    })();
+  </script>
+</body>
+</html>
